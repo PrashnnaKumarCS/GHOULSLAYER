@@ -3,26 +3,37 @@
 #include "Config.hpp"
 #include <cmath>
 #include <algorithm>
+#include <iostream>
 
 Player::Player(const ResourceManager& resources)
     : m_position(Config::Player::START_X, Config::Player::START_Y)
+    , m_aimDirection(1.0f, 0.0f)
     , m_health(Config::Player::MAX_HEALTH)
     , m_isMoving(false)
     , m_currentFrame(0)
     , m_animTimer(0.0f)
+    , m_currentWeaponIndex(0)
+    , m_triggerSemiAuto(false)
+    , m_muzzleFlashTimer(0.0f)
 {
     // Cache the 4 walking animation frames
     for (int i = 0; i < 4; ++i) {
         m_frameTextures.push_back(&resources.getTexture("player_" + std::to_string(i)));
     }
 
-    // Configure sprite
     if (!m_frameTextures.empty() && m_frameTextures[0] != nullptr) {
         m_sprite.setTexture(*m_frameTextures[0]);
     }
-    // Origin at center (16, 16) for symmetrical 360-degree rotation
     m_sprite.setOrigin(16.0f, 16.0f);
     m_sprite.setPosition(m_position);
+
+    // Initialize weapon inventory:
+    // Slot 0: Pistol (unlocked)
+    // Slot 1: Shotgun (starts locked)
+    // Slot 2: Assault Rifle (starts locked)
+    m_weapons.push_back(Weapon::createPistol());
+    m_weapons.push_back(Weapon::createShotgun());
+    m_weapons.push_back(Weapon::createAssaultRifle());
 
     updateCollisionBox();
 }
@@ -36,39 +47,122 @@ void Player::updateCollisionBox() {
     );
 }
 
+sf::Vector2f Player::calculateMuzzlePosition() const {
+    // Offset gun muzzle forward along aim direction and slightly to the right hand side
+    sf::Vector2f perpRight(-m_aimDirection.y, m_aimDirection.x);
+    return m_position
+         + m_aimDirection * Config::Player::MUZZLE_FORWARD_OFFSET
+         + perpRight * Config::Player::MUZZLE_SIDE_OFFSET;
+}
+
+void Player::handleEvent(const sf::Event& event) {
+    if (event.type == sf::Event::KeyPressed) {
+        // Direct weapon slot selection via number keys (only switches if unlocked)
+        if (event.key.code == sf::Keyboard::Num1) {
+            selectWeapon(0);
+        } else if (event.key.code == sf::Keyboard::Num2) {
+            selectWeapon(1);
+        } else if (event.key.code == sf::Keyboard::Num3) {
+            selectWeapon(2);
+        }
+
+        // Manual reload trigger
+        if (event.key.code == sf::Keyboard::R) {
+            m_weapons[m_currentWeaponIndex].startReload();
+        }
+
+#if DEBUG_FEATURES
+        // DEBUG: Press F1 to unlock all weapons for immediate testing
+        if (event.key.code == sf::Keyboard::F1) {
+            unlockAllWeapons();
+            std::cout << "[DEBUG] All weapons unlocked (Pistol, Shotgun, Assault Rifle).\n";
+        }
+#endif
+    }
+
+    // Weapon switching via mouse scroll wheel
+    if (event.type == sf::Event::MouseWheelScrolled) {
+        if (event.mouseWheelScroll.wheel == sf::Mouse::VerticalWheel) {
+            if (event.mouseWheelScroll.delta > 0.0f) {
+                cycleWeapon(-1); // Previous unlocked weapon
+            } else if (event.mouseWheelScroll.delta < 0.0f) {
+                cycleWeapon(1);  // Next unlocked weapon
+            }
+        }
+    }
+
+    // Semi-automatic mouse click registration
+    if (event.type == sf::Event::MouseButtonPressed) {
+        if (event.mouseButton.button == sf::Mouse::Left) {
+            if (!m_weapons[m_currentWeaponIndex].isAutomatic()) {
+                m_triggerSemiAuto = true;
+            }
+        }
+    }
+}
+
+void Player::selectWeapon(int index) {
+    if (index >= 0 && index < static_cast<int>(m_weapons.size())) {
+        if (m_weapons[index].isUnlocked() && index != m_currentWeaponIndex) {
+            // Switching weapons immediately cancels any active reload
+            m_weapons[m_currentWeaponIndex].cancelReload();
+            m_currentWeaponIndex = index;
+            m_triggerSemiAuto = false;
+        }
+    }
+}
+
+void Player::cycleWeapon(int step) {
+    int total = static_cast<int>(m_weapons.size());
+    for (int i = 1; i <= total; ++i) {
+        int candidate = (m_currentWeaponIndex + step * i) % total;
+        if (candidate < 0) candidate += total;
+
+        if (m_weapons[candidate].isUnlocked()) {
+            selectWeapon(candidate);
+            break;
+        }
+    }
+}
+
+void Player::unlockAllWeapons() {
+    for (auto& weapon : m_weapons) {
+        weapon.unlock();
+    }
+}
+
 void Player::update(float dt, const std::vector<sf::FloatRect>& obstacles, sf::Vector2f worldMousePos) {
-    // 1. Gather directional input from WASD keys
+    // 1. Update current weapon timers (fire cooldown, reload, spread recovery)
+    m_weapons[m_currentWeaponIndex].update(dt);
+
+    // 2. Gather WASD input
     sf::Vector2f moveDir(0.0f, 0.0f);
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) moveDir.y -= 1.0f;
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) moveDir.y += 1.0f;
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) moveDir.x -= 1.0f;
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) moveDir.x += 1.0f;
 
-    // 2. Normalize input direction (guard against division by zero on idle)
+    // 3. Diagonal normalization
     float lengthSq = moveDir.x * moveDir.x + moveDir.y * moveDir.y;
     if (lengthSq > 0.0001f) {
-        float invLength = 1.0f / std::sqrt(lengthSq);
-        moveDir.x *= invLength;
-        moveDir.y *= invLength;
+        float invLen = 1.0f / std::sqrt(lengthSq);
+        moveDir.x *= invLen;
+        moveDir.y *= invLen;
         m_isMoving = true;
     } else {
         m_isMoving = false;
     }
 
-    // 3. Axis-Separated Movement & Collision Resolution (Slides smoothly along walls)
-    // --- Step X Axis ---
+    // 4. Axis-Separated Collision Resolution (slides smoothly along walls)
+    // --- Step X ---
     if (moveDir.x != 0.0f) {
         m_position.x += moveDir.x * Config::Player::SPEED * dt;
         updateCollisionBox();
-
         for (const auto& obs : obstacles) {
             if (m_collisionBox.intersects(obs)) {
-                // Moving right, push back to left edge of obstacle
                 if (moveDir.x > 0.0f) {
                     m_position.x = obs.left - m_halfSize;
-                }
-                // Moving left, push back to right edge of obstacle
-                else if (moveDir.x < 0.0f) {
+                } else if (moveDir.x < 0.0f) {
                     m_position.x = obs.left + obs.width + m_halfSize;
                 }
                 updateCollisionBox();
@@ -76,19 +170,15 @@ void Player::update(float dt, const std::vector<sf::FloatRect>& obstacles, sf::V
         }
     }
 
-    // --- Step Y Axis ---
+    // --- Step Y ---
     if (moveDir.y != 0.0f) {
         m_position.y += moveDir.y * Config::Player::SPEED * dt;
         updateCollisionBox();
-
         for (const auto& obs : obstacles) {
             if (m_collisionBox.intersects(obs)) {
-                // Moving down, push back to top edge of obstacle
                 if (moveDir.y > 0.0f) {
                     m_position.y = obs.top - m_halfSize;
-                }
-                // Moving up, push back to bottom edge of obstacle
-                else if (moveDir.y < 0.0f) {
+                } else if (moveDir.y < 0.0f) {
                     m_position.y = obs.top + obs.height + m_halfSize;
                 }
                 updateCollisionBox();
@@ -96,18 +186,23 @@ void Player::update(float dt, const std::vector<sf::FloatRect>& obstacles, sf::V
         }
     }
 
-    // 4. Clamp within map boundaries
+    // 5. Clamp to world boundaries
     m_position.x = std::clamp(m_position.x, m_halfSize, Config::Map::WIDTH - m_halfSize);
     m_position.y = std::clamp(m_position.y, m_halfSize, Config::Map::HEIGHT - m_halfSize);
     updateCollisionBox();
 
-    // 5. 360-Degree Aim Rotation Toward Mouse in World Coordinates
+    // 6. Aim Direction toward mouse
     sf::Vector2f aimDiff = worldMousePos - m_position;
-    float aimAngleRad = std::atan2(aimDiff.y, aimDiff.x);
+    float aimLen = std::hypot(aimDiff.x, aimDiff.y);
+    if (aimLen > 0.0001f) {
+        m_aimDirection = aimDiff / aimLen;
+    }
+
+    float aimAngleRad = std::atan2(m_aimDirection.y, m_aimDirection.x);
     float aimAngleDeg = aimAngleRad * (180.0f / 3.1415926535f);
     m_sprite.setRotation(aimAngleDeg);
 
-    // 6. Walking Bob Animation (updates only while moving)
+    // 7. Walking bob animation
     if (m_isMoving) {
         m_animTimer += dt;
         if (m_animTimer >= Config::Player::ANIM_FRAME_TIME) {
@@ -116,15 +211,80 @@ void Player::update(float dt, const std::vector<sf::FloatRect>& obstacles, sf::V
             m_sprite.setTexture(*m_frameTextures[m_currentFrame]);
         }
     } else {
-        // Return to resting idle frame when stopped
         m_currentFrame = 0;
         m_animTimer = 0.0f;
         m_sprite.setTexture(*m_frameTextures[0]);
     }
-
     m_sprite.setPosition(m_position);
+
+    // 8. Shooting Logic
+    bool wantsToShoot = false;
+    if (m_weapons[m_currentWeaponIndex].isAutomatic()) {
+        wantsToShoot = sf::Mouse::isButtonPressed(sf::Mouse::Left);
+    } else {
+        wantsToShoot = m_triggerSemiAuto;
+        m_triggerSemiAuto = false; // Reset single click trigger
+    }
+
+    if (wantsToShoot) {
+        if (m_weapons[m_currentWeaponIndex].canFire()) {
+            sf::Vector2f muzzlePos = calculateMuzzlePosition();
+            auto bullets = m_weapons[m_currentWeaponIndex].fire(muzzlePos, m_aimDirection);
+            m_pendingBullets.insert(m_pendingBullets.end(), bullets.begin(), bullets.end());
+
+            // Trigger muzzle flash
+            m_muzzleFlashTimer = Config::MuzzleFlash::DURATION;
+            m_muzzleFlashPos = muzzlePos;
+        } else if (m_weapons[m_currentWeaponIndex].getMagazine() == 0 && m_weapons[m_currentWeaponIndex].getReserve() > 0) {
+            m_weapons[m_currentWeaponIndex].startReload();
+        }
+    }
+
+    // 9. Muzzle flash timer decay
+    if (m_muzzleFlashTimer > 0.0f) {
+        m_muzzleFlashTimer -= dt;
+    }
+}
+
+std::vector<Bullet> Player::extractPendingBullets() {
+    std::vector<Bullet> bullets = std::move(m_pendingBullets);
+    m_pendingBullets.clear();
+    return bullets;
 }
 
 void Player::draw(sf::RenderTarget& target) const {
+    // 1. Draw player sprite
     target.draw(m_sprite);
+
+    // 2. Draw muzzle flash if active
+    if (m_muzzleFlashTimer > 0.0f) {
+        sf::CircleShape flash(Config::MuzzleFlash::RADIUS);
+        flash.setOrigin(Config::MuzzleFlash::RADIUS, Config::MuzzleFlash::RADIUS);
+        flash.setPosition(m_muzzleFlashPos);
+        flash.setFillColor(Config::MuzzleFlash::COLOR);
+        target.draw(flash);
+    }
+
+    // 3. Draw reloading progress bar if currently reloading
+    if (m_weapons[m_currentWeaponIndex].isReloading()) {
+        float progress = m_weapons[m_currentWeaponIndex].getReloadProgress();
+
+        const float BAR_WIDTH = 42.0f;
+        const float BAR_HEIGHT = 6.0f;
+        sf::Vector2f barPos(m_position.x - BAR_WIDTH * 0.5f, m_position.y - 28.0f);
+
+        // Background box
+        sf::RectangleShape bg(sf::Vector2f(BAR_WIDTH, BAR_HEIGHT));
+        bg.setPosition(barPos);
+        bg.setFillColor(sf::Color(20, 20, 20, 220));
+        bg.setOutlineColor(sf::Color(255, 255, 255, 140));
+        bg.setOutlineThickness(1.0f);
+        target.draw(bg);
+
+        // Progress fill
+        sf::RectangleShape fill(sf::Vector2f(BAR_WIDTH * progress, BAR_HEIGHT));
+        fill.setPosition(barPos);
+        fill.setFillColor(sf::Color(80, 210, 255));
+        target.draw(fill);
+    }
 }

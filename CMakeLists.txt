@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(GHOULSLAYER
-    VERSION 0.1.0
+    VERSION 0.2.0
     LANGUAGES CXX
 )
 
@@ -37,6 +37,8 @@ set(SOURCES
     src/ResourceManager.cpp
     src/PlaceholderArt.cpp
     src/MinGWCompat.cpp
+    src/Bullet.cpp
+    src/Weapon.cpp
 )
 
 set(HEADERS
@@ -47,6 +49,8 @@ set(HEADERS
     include/Camera.hpp
     include/ResourceManager.hpp
     include/PlaceholderArt.hpp
+    include/Bullet.hpp
+    include/Weapon.hpp
 )
 
 add_executable(GHOULSLAYER

@@ -23,10 +23,11 @@ void ResourceManager::createFallbackTexture() {
 }
 
 void ResourceManager::createFallbackFont() {
-    // Attempt to load standard Windows system fonts as a fallback
-    if (!m_fallbackFont.loadFromFile("C:/Windows/Fonts/arial.ttf")) {
-        // If system font path is unavailable, font will remain default (empty)
-        std::cerr << "[ResourceManager INFO] Default system font fallback initialized.\n";
+    // Attempt to load standard Windows monospace system font as fallback
+    if (!m_fallbackFont.loadFromFile("C:/Windows/Fonts/consola.ttf")) {
+        if (!m_fallbackFont.loadFromFile("C:/Windows/Fonts/arial.ttf")) {
+            std::cerr << "[ResourceManager INFO] Default system font fallback initialized (empty).\n";
+        }
     }
 }
 
