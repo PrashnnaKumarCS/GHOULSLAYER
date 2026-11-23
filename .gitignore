@@ -1,0 +1,22 @@
+# Build directory
+build/
+bin/
+
+# IDE configurations
+.vs/
+.vscode/
+.idea/
+
+# CMake temporary files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Compiled binaries and libraries
+*.exe
+*.o
+*.obj
+*.a
+*.lib
+*.dll
