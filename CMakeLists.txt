@@ -27,9 +27,27 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(SFML)
 
-# Collect sources and headers
-file(GLOB_RECURSE SOURCES "src/*.cpp")
-file(GLOB_RECURSE HEADERS "include/*.hpp" "src/*.hpp")
+# Explicitly list source and header files.
+set(SOURCES
+    src/main.cpp
+    src/Game.cpp
+    src/Player.cpp
+    src/Map.cpp
+    src/Camera.cpp
+    src/ResourceManager.cpp
+    src/PlaceholderArt.cpp
+    src/MinGWCompat.cpp
+)
+
+set(HEADERS
+    src/Config.hpp
+    include/Game.hpp
+    include/Player.hpp
+    include/Map.hpp
+    include/Camera.hpp
+    include/ResourceManager.hpp
+    include/PlaceholderArt.hpp
+)
 
 add_executable(GHOULSLAYER
     ${SOURCES}
@@ -58,5 +76,15 @@ if(MINGW)
         -static
         -static-libgcc
         -static-libstdc++
+    )
+endif()
+
+# Automatically copy OpenAL DLL next to executable for audio support
+if(WIN32 AND EXISTS "${sfml_SOURCE_DIR}/extlibs/bin/x64/openal32.dll")
+    add_custom_command(TARGET GHOULSLAYER POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${sfml_SOURCE_DIR}/extlibs/bin/x64/openal32.dll"
+            "$<TARGET_FILE_DIR:GHOULSLAYER>"
+        VERBATIM
     )
 endif()
