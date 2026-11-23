@@ -10,6 +10,10 @@ Player::Player(const ResourceManager& resources)
     , m_aimDirection(1.0f, 0.0f)
     , m_health(Config::Player::MAX_HEALTH)
     , m_isMoving(false)
+    , m_isDead(false)
+    , m_deathLogged(false)
+    , m_invulnerabilityTimer(0.0f)
+    , m_damageFlashTimer(0.0f)
     , m_currentFrame(0)
     , m_animTimer(0.0f)
     , m_currentWeaponIndex(0)
@@ -55,7 +59,25 @@ sf::Vector2f Player::calculateMuzzlePosition() const {
          + perpRight * Config::Player::MUZZLE_SIDE_OFFSET;
 }
 
+void Player::takeDamage(float damage) {
+    if (m_isDead || m_invulnerabilityTimer > 0.0f) return;
+
+    m_health = std::max(0.0f, m_health - damage);
+    m_invulnerabilityTimer = Config::Player::INVULNERABILITY_DURATION;
+    m_damageFlashTimer = Config::Player::DAMAGE_FLASH_DURATION;
+
+    if (m_health <= 0.0f) {
+        m_isDead = true;
+        if (!m_deathLogged) {
+            std::cout << "[GHOULSLAYER] PLAYER DIED\n";
+            m_deathLogged = true;
+        }
+    }
+}
+
 void Player::handleEvent(const sf::Event& event) {
+    if (m_isDead) return; // Prevent actions when dead
+
     if (event.type == sf::Event::KeyPressed) {
         // Direct weapon slot selection via number keys (only switches if unlocked)
         if (event.key.code == sf::Keyboard::Num1) {
@@ -132,6 +154,20 @@ void Player::unlockAllWeapons() {
 }
 
 void Player::update(float dt, const std::vector<sf::FloatRect>& obstacles, sf::Vector2f worldMousePos) {
+    // Decrement damage response timers
+    if (m_invulnerabilityTimer > 0.0f) {
+        m_invulnerabilityTimer = std::max(0.0f, m_invulnerabilityTimer - dt);
+    }
+    if (m_damageFlashTimer > 0.0f) {
+        m_damageFlashTimer = std::max(0.0f, m_damageFlashTimer - dt);
+    }
+
+    // Stop updating player controls and movement if dead
+    if (m_isDead) {
+        m_isMoving = false;
+        return;
+    }
+
     // 1. Update current weapon timers (fire cooldown, reload, spread recovery)
     m_weapons[m_currentWeaponIndex].update(dt);
 
@@ -253,8 +289,17 @@ std::vector<Bullet> Player::extractPendingBullets() {
 }
 
 void Player::draw(sf::RenderTarget& target) const {
-    // 1. Draw player sprite
-    target.draw(m_sprite);
+    // 1. Draw player sprite with hit or death tint
+    sf::Sprite renderSprite = m_sprite;
+    if (m_isDead) {
+        renderSprite.setColor(sf::Color(120, 50, 50, 160));
+    } else if (m_invulnerabilityTimer > 0.0f) {
+        renderSprite.setColor(sf::Color(255, 120, 120, 210));
+    }
+    target.draw(renderSprite);
+
+    // If dead, do not render weapon flashes or reload bars
+    if (m_isDead) return;
 
     // 2. Draw muzzle flash if active
     if (m_muzzleFlashTimer > 0.0f) {

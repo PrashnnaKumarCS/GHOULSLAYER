@@ -2,6 +2,7 @@
 
 #include <SFML/Graphics.hpp>
 #include <vector>
+#include "Config.hpp"
 #include "Weapon.hpp"
 #include "Bullet.hpp"
 
@@ -34,9 +35,16 @@ public:
     // Retrieve bullets created during this frame to add to the world simulation
     std::vector<Bullet> extractPendingBullets();
 
+    // Inflict damage upon the player, enforcing invulnerability frames
+    void takeDamage(float damage);
+
     // Getters
     sf::Vector2f getPosition() const { return m_position; }
     float getHealth() const { return m_health; }
+    float getMaxHealth() const { return Config::Player::MAX_HEALTH; }
+    float getRadius() const { return Config::Player::COLLISION_RADIUS; }
+    float getDamageFlashTimer() const { return m_damageFlashTimer; }
+    bool isDead() const { return m_isDead; }
     const sf::FloatRect& getCollisionBox() const { return m_collisionBox; }
     const Weapon& getCurrentWeapon() const { return m_weapons[m_currentWeaponIndex]; }
 
@@ -53,6 +61,10 @@ private:
     sf::Vector2f m_aimDirection;
     float m_health;
     bool m_isMoving;
+    bool m_isDead;
+    bool m_deathLogged;
+    float m_invulnerabilityTimer;
+    float m_damageFlashTimer;
 
     // Bounding box for world collision
     sf::FloatRect m_collisionBox;

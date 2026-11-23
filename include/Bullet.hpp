@@ -9,7 +9,7 @@
 // Draws an illuminated tracer streak aligned with velocity.
 class Bullet {
 public:
-    Bullet(sf::Vector2f startPosition, sf::Vector2f direction, float speed, float damage, float maxRange);
+    Bullet(sf::Vector2f startPosition, sf::Vector2f direction, float speed, float damage, float maxRange, bool isShotgunPellet = false);
 
     // Update position and check collision with obstacles and map boundaries
     void update(float dt, const std::vector<sf::FloatRect>& obstacles, float mapWidth, float mapHeight);
@@ -18,8 +18,11 @@ public:
     void draw(sf::RenderTarget& target) const;
 
     bool isAlive() const { return m_isAlive; }
+    void kill() { m_isAlive = false; }
     float getDamage() const { return m_damage; }
     sf::Vector2f getPosition() const { return m_position; }
+    sf::Vector2f getDirection() const { return m_direction; }
+    bool isShotgunPellet() const { return m_isShotgunPellet; }
 
 private:
     sf::Vector2f m_position;
@@ -28,5 +31,6 @@ private:
     float m_damage;
     float m_maxRange;
     float m_distanceTraveled;
+    bool m_isShotgunPellet;
     bool m_isAlive;
 };

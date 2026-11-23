@@ -6,9 +6,170 @@
 
 void PlaceholderArt::generateAll(ResourceManager& resources) {
     generatePlayerWalkFrames(resources);
+    generateZombieWalkFrames(resources);
     generateTiles(resources);
     generateObstacles(resources);
     generateVignette(resources);
+}
+
+void PlaceholderArt::generateZombieWalkFrames(ResourceManager& resources) {
+    // -------------------------------------------------------------
+    // 1. WALKER: 32x32 pixels, Sickly Decaying Greenish Humanoid
+    // -------------------------------------------------------------
+    const sf::Color walkerSkin(85, 128, 75);
+    const sf::Color walkerRags(45, 50, 58);
+    const sf::Color walkerDark(25, 30, 25);
+
+    for (int frame = 0; frame < 4; ++frame) {
+        sf::Image img;
+        img.create(32, 32, sf::Color(0, 0, 0, 0));
+
+        int legOffset = (frame == 1) ? 2 : (frame == 3 ? -2 : 0);
+        int sway = (frame % 2 == 1) ? 1 : 0;
+
+        // Feet / Torn pants
+        for (int y = 7; y <= 10; ++y) {
+            for (int x = 11 + legOffset; x <= 14 + legOffset; ++x) img.setPixel(x, y, walkerRags);
+        }
+        for (int y = 21; y <= 24; ++y) {
+            for (int x = 11 - legOffset; x <= 14 - legOffset; ++x) img.setPixel(x, y, walkerRags);
+        }
+
+        // Torso with torn clothing
+        for (int y = 11; y <= 20; ++y) {
+            for (int x = 10; x <= 17; ++x) {
+                bool isTorn = ((x + y) % 5 == 0);
+                img.setPixel(x, y, isTorn ? walkerSkin : walkerRags);
+            }
+        }
+
+        // Rotting Head
+        for (int y = 13; y <= 18; ++y) {
+            for (int x = 11; x <= 16; ++x) img.setPixel(x, y, walkerSkin);
+        }
+        // Dark sunken eye sockets
+        img.setPixel(16, 14, walkerDark);
+        img.setPixel(16, 17, walkerDark);
+
+        // Outstretched Grasping Arms (reaching forward along +X)
+        for (int x = 17; x <= 26 + sway; ++x) {
+            img.setPixel(x, 12, walkerSkin);
+            img.setPixel(x, 19, walkerSkin);
+        }
+
+        sf::Texture tex;
+        tex.loadFromImage(img);
+        tex.setSmooth(false);
+        resources.insertTexture("zombie_walker_" + std::to_string(frame), tex);
+    }
+
+    // -------------------------------------------------------------
+    // 2. RUNNER: 28x28 pixels, Gaunt, Hunched Blood-Red Feral Sprinter
+    // -------------------------------------------------------------
+    const sf::Color runnerSkin(175, 65, 55);
+    const sf::Color runnerClaw(220, 210, 190);
+    const sf::Color runnerEye(245, 230, 80);
+
+    for (int frame = 0; frame < 4; ++frame) {
+        sf::Image img;
+        img.create(28, 28, sf::Color(0, 0, 0, 0));
+
+        int sprintOffset = (frame == 1) ? 3 : (frame == 3 ? -3 : 0);
+
+        // Claws & Digits
+        for (int y = 6; y <= 9; ++y) {
+            for (int x = 9 + sprintOffset; x <= 12 + sprintOffset; ++x) img.setPixel(x, y, runnerSkin);
+        }
+        for (int y = 18; y <= 21; ++y) {
+            for (int x = 9 - sprintOffset; x <= 12 - sprintOffset; ++x) img.setPixel(x, y, runnerSkin);
+        }
+
+        // Gaunt, hunched torso
+        for (int y = 10; y <= 17; ++y) {
+            for (int x = 8; x <= 16; ++x) img.setPixel(x, y, runnerSkin);
+        }
+
+        // Feral Snarling Head
+        for (int y = 11; y <= 16; ++y) {
+            for (int x = 13; x <= 18; ++x) img.setPixel(x, y, runnerSkin);
+        }
+        // Glowing rabid eyes
+        img.setPixel(17, 12, runnerEye);
+        img.setPixel(17, 15, runnerEye);
+
+        // Razor-sharp predatory claws extended forward
+        for (int x = 16; x <= 24; ++x) {
+            img.setPixel(x, 9, runnerSkin);
+            img.setPixel(x, 18, runnerSkin);
+        }
+        img.setPixel(25, 9, runnerClaw);
+        img.setPixel(25, 18, runnerClaw);
+
+        sf::Texture tex;
+        tex.loadFromImage(img);
+        tex.setSmooth(false);
+        resources.insertTexture("zombie_runner_" + std::to_string(frame), tex);
+    }
+
+    // -------------------------------------------------------------
+    // 3. TANK: 56x56 pixels, Massive Bruised Purple Hulking Brute
+    // -------------------------------------------------------------
+    const sf::Color tankSkin(65, 55, 78);
+    const sf::Color tankCarapace(42, 35, 52);
+    const sf::Color tankSpike(115, 80, 120);
+
+    for (int frame = 0; frame < 4; ++frame) {
+        sf::Image img;
+        img.create(56, 56, sf::Color(0, 0, 0, 0));
+
+        int stompOffset = (frame == 1) ? 3 : (frame == 3 ? -3 : 0);
+        int stompBob = (frame % 2 == 1) ? 1 : 0;
+
+        // Tree-trunk legs
+        for (int y = 10 + stompBob; y <= 18 + stompBob; ++y) {
+            for (int x = 16 + stompOffset; x <= 25 + stompOffset; ++x) img.setPixel(x, y, tankSkin);
+        }
+        for (int y = 37 + stompBob; y <= 45 + stompBob; ++y) {
+            for (int x = 16 - stompOffset; x <= 25 - stompOffset; ++x) img.setPixel(x, y, tankSkin);
+        }
+
+        // Colossal muscular torso with mutated spinal plates
+        for (int y = 15 + stompBob; y <= 40 + stompBob; ++y) {
+            for (int x = 14; x <= 33; ++x) {
+                bool isSpine = (x <= 18 && y >= 24 && y <= 31);
+                img.setPixel(x, y, isSpine ? tankSpike : tankSkin);
+            }
+        }
+
+        // Hardened shoulder carapaces
+        for (int y = 12 + stompBob; y <= 19 + stompBob; ++y) {
+            for (int x = 20; x <= 29; ++x) img.setPixel(x, y, tankCarapace);
+        }
+        for (int y = 36 + stompBob; y <= 43 + stompBob; ++y) {
+            for (int x = 20; x <= 29; ++x) img.setPixel(x, y, tankCarapace);
+        }
+
+        // Small sunken head between massive traps
+        for (int y = 24 + stompBob; y <= 31 + stompBob; ++y) {
+            for (int x = 22; x <= 29; ++x) img.setPixel(x, y, tankSkin);
+        }
+        // Dull red eyes
+        img.setPixel(28, 25 + stompBob, sf::Color(220, 40, 40));
+        img.setPixel(28, 30 + stompBob, sf::Color(220, 40, 40));
+
+        // Massive boulder-like fists reaching forward
+        for (int y = 14 + stompBob; y <= 21 + stompBob; ++y) {
+            for (int x = 30; x <= 46; ++x) img.setPixel(x, y, tankSkin);
+        }
+        for (int y = 34 + stompBob; y <= 41 + stompBob; ++y) {
+            for (int x = 30; x <= 46; ++x) img.setPixel(x, y, tankSkin);
+        }
+
+        sf::Texture tex;
+        tex.loadFromImage(img);
+        tex.setSmooth(false);
+        resources.insertTexture("zombie_tank_" + std::to_string(frame), tex);
+    }
 }
 
 void PlaceholderArt::generatePlayerWalkFrames(ResourceManager& resources) {

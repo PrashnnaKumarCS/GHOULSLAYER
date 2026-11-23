@@ -2,12 +2,13 @@
 #include "Config.hpp"
 #include <cmath>
 
-Bullet::Bullet(sf::Vector2f startPosition, sf::Vector2f direction, float speed, float damage, float maxRange)
+Bullet::Bullet(sf::Vector2f startPosition, sf::Vector2f direction, float speed, float damage, float maxRange, bool isShotgunPellet)
     : m_position(startPosition)
     , m_speed(speed)
     , m_damage(damage)
     , m_maxRange(maxRange)
     , m_distanceTraveled(0.0f)
+    , m_isShotgunPellet(isShotgunPellet)
     , m_isAlive(true)
 {
     // Guard against zero-length direction vectors to prevent division by zero or NaN coordinates

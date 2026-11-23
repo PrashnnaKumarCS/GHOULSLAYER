@@ -4,7 +4,7 @@
 
 // Central configuration file for GHOULSLAYER.
 // All tunable numbers, gameplay speeds, dimensions, weapon stats,
-// and engine settings are kept here in one place.
+// zombie stats, and engine settings are kept here in one place.
 namespace Config {
 
     namespace Window {
@@ -36,12 +36,16 @@ namespace Config {
         constexpr float START_Y = 2000.0f;
         constexpr float SPEED = 250.0f;     // Movement speed in pixels per second
         constexpr float MAX_HEALTH = 100.0f;
-        constexpr float COLLISION_RADIUS = 16.0f; // Radius for bounding box
+        constexpr float COLLISION_RADIUS = 14.0f; // Radius for bounding box
         constexpr float ANIM_FRAME_TIME = 0.12f;  // Seconds per walking animation frame
 
         // Gun muzzle offset from player center (forward along aim, right perpendicular)
         constexpr float MUZZLE_FORWARD_OFFSET = 20.0f;
         constexpr float MUZZLE_SIDE_OFFSET = 6.0f;
+
+        // Combat & Damage response
+        constexpr float INVULNERABILITY_DURATION = 0.40f; // Seconds of invulnerability after being struck
+        constexpr float DAMAGE_FLASH_DURATION = 0.30f;    // Seconds of red screen flash
     }
 
     namespace Weapons {
@@ -104,11 +108,66 @@ namespace Config {
         inline const sf::Color COLOR = sf::Color(255, 220, 100);
     }
 
+    namespace Zombies {
+        namespace Walker {
+            inline const std::string NAME = "Walker";
+            constexpr float SPEED = 60.0f;             // ~60 px/s
+            constexpr float MAX_HEALTH = 60.0f;        // 60 HP
+            constexpr float DAMAGE = 10.0f;            // 10 damage per hit
+            constexpr float RADIUS = 15.0f;            // standard size
+            constexpr float ATTACK_RANGE = 32.0f;
+            constexpr float ATTACK_COOLDOWN = 1.0f;    // seconds between attacks
+            constexpr float ANIM_FRAME_TIME = 0.18f;
+        }
+
+        namespace Runner {
+            inline const std::string NAME = "Runner";
+            constexpr float SPEED = 150.0f;            // ~150 px/s (fast)
+            constexpr float MAX_HEALTH = 35.0f;        // 35 HP (fragile)
+            constexpr float DAMAGE = 8.0f;             // 8 damage per hit
+            constexpr float RADIUS = 12.0f;            // smaller size
+            constexpr float ATTACK_RANGE = 28.0f;
+            constexpr float ATTACK_COOLDOWN = 0.6f;    // fast attack
+            constexpr float WOBBLE_FREQUENCY = 6.0f;   // erratic movement speed
+            constexpr float WOBBLE_AMPLITUDE = 35.0f;  // lateral sway
+            constexpr float ANIM_FRAME_TIME = 0.10f;
+        }
+
+        namespace Tank {
+            inline const std::string NAME = "Tank";
+            constexpr float SPEED = 45.0f;             // ~45 px/s (slow brute)
+            constexpr float MAX_HEALTH = 400.0f;       // 400 HP (bullet sponge)
+            constexpr float DAMAGE = 30.0f;            // 30 damage per heavy smash
+            constexpr float RADIUS = 26.0f;            // large size
+            constexpr float ATTACK_RANGE = 44.0f;
+            constexpr float ATTACK_COOLDOWN = 2.0f;    // slower attack
+            constexpr float WINDUP_TIME = 0.50f;       // visible attack preparation
+            constexpr float SHOTGUN_STAGGER_TIME = 0.35f; // brief stagger when hit by shotgun
+            constexpr float ANIM_FRAME_TIME = 0.24f;
+        }
+
+        // Shared zombie behavior settings
+        constexpr float SEPARATION_FORCE = 70.0f;       // Soft push-apart speed between colliding zombies
+        constexpr float HIT_FLASH_DURATION = 0.08f;     // Red/white damage flash duration
+        constexpr float DEATH_FADE_DURATION = 0.50f;    // Fade out duration before removal
+    }
+
+    namespace Blood {
+        constexpr int PARTICLES_PER_HIT = 7;
+        constexpr float MIN_SPEED = 50.0f;
+        constexpr float MAX_SPEED = 180.0f;
+        constexpr float LIFETIME = 0.35f;
+        constexpr float PARTICLE_SIZE = 3.5f;
+        inline const sf::Color COLOR = sf::Color(180, 20, 20);
+    }
+
     namespace Darkness {
         // Semi-transparent atmospheric tint
         inline const sf::Color OVERLAY_COLOR = sf::Color(10, 10, 18, 120);
         // Vignette intensity
         inline const sf::Color VIGNETTE_COLOR = sf::Color(0, 0, 0, 200);
+        // Red screen-edge damage flash
+        inline const sf::Color DAMAGE_FLASH_COLOR = sf::Color(180, 0, 0, 110);
     }
 
 } // namespace Config

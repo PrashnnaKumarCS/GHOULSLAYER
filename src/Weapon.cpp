@@ -150,6 +150,7 @@ std::vector<Bullet> Weapon::fire(sf::Vector2f muzzlePosition, sf::Vector2f aimDi
     );
 
     // Spawn pellets (1 for pistol/rifle, 6 for shotgun)
+    bool isShotgun = (m_type == WeaponType::Shotgun);
     for (int i = 0; i < m_stats.pellets; ++i) {
         float pelletAngleRad = baseAngleRad + spreadDist(getRandomEngine());
         sf::Vector2f pelletDir(std::cos(pelletAngleRad), std::sin(pelletAngleRad));
@@ -159,7 +160,8 @@ std::vector<Bullet> Weapon::fire(sf::Vector2f muzzlePosition, sf::Vector2f aimDi
             pelletDir,
             m_stats.bulletSpeed,
             m_stats.damage,
-            m_stats.maxRange
+            m_stats.maxRange,
+            isShotgun
         );
     }
 

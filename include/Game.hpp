@@ -8,6 +8,8 @@
 #include "Map.hpp"
 #include "Player.hpp"
 #include "Bullet.hpp"
+#include "Zombie.hpp"
+#include "BloodSystem.hpp"
 
 // Game states for state machine
 enum class GameState {
@@ -47,6 +49,9 @@ private:
     void renderPaused();
     void renderGameOver();
 
+    // Spawns zombies in a ring outside the screen around the player
+    void spawnZombieWave(int count);
+
     // Window and Timing
     sf::RenderWindow m_window;
     sf::Clock m_clock;
@@ -61,14 +66,17 @@ private:
     std::unique_ptr<Player> m_player;
     Camera m_camera;
 
-    // Active projectiles
+    // Entities
     std::vector<Bullet> m_bullets;
+    std::vector<Zombie> m_zombies;
+    BloodSystem m_bloodSystem;
 
-    // Screen-space atmospheric effects
+    // Screen-space atmospheric & damage effects
     sf::RectangleShape m_darkOverlay;
     sf::Sprite m_vignetteSprite;
+    sf::RectangleShape m_damageFlashOverlay;
 
-    // Temporary debug HUD for Stage 2
+    // Temporary debug HUD for Stage 3
     sf::RectangleShape m_debugBox;
     sf::Text m_debugText;
     sf::Text m_hintText;

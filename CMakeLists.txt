@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(GHOULSLAYER
-    VERSION 0.2.0
+    VERSION 0.3.0
     LANGUAGES CXX
 )
 
@@ -39,6 +39,9 @@ set(SOURCES
     src/MinGWCompat.cpp
     src/Bullet.cpp
     src/Weapon.cpp
+    src/Zombie.cpp
+    src/CollisionSystem.cpp
+    src/BloodSystem.cpp
 )
 
 set(HEADERS
@@ -51,6 +54,9 @@ set(HEADERS
     include/PlaceholderArt.hpp
     include/Bullet.hpp
     include/Weapon.hpp
+    include/Zombie.hpp
+    include/CollisionSystem.hpp
+    include/BloodSystem.hpp
 )
 
 add_executable(GHOULSLAYER
