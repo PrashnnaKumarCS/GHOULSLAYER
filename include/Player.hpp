@@ -9,7 +9,9 @@
 class ResourceManager;
 
 // Enables debug shortcuts (F1 to unlock all weapons)
+#ifndef DEBUG_FEATURES
 #define DEBUG_FEATURES 1
+#endif
 
 // Player represents the playable survivor.
 // Features:

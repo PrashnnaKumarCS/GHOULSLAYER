@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(GHOULSLAYER
-    VERSION 0.4.0
+    VERSION 0.5.0
     LANGUAGES CXX
 )
 
@@ -45,6 +45,12 @@ set(SOURCES
     src/Pickup.cpp
     src/WaveManager.cpp
     src/HUD.cpp
+    src/Button.cpp
+    src/MainMenu.cpp
+    src/InstructionsScreen.cpp
+    src/SettingsScreen.cpp
+    src/PauseMenu.cpp
+    src/GameOverScreen.cpp
 )
 
 set(HEADERS
@@ -63,6 +69,12 @@ set(HEADERS
     include/Pickup.hpp
     include/WaveManager.hpp
     include/HUD.hpp
+    include/Button.hpp
+    include/MainMenu.hpp
+    include/InstructionsScreen.hpp
+    include/SettingsScreen.hpp
+    include/PauseMenu.hpp
+    include/GameOverScreen.hpp
 )
 
 add_executable(GHOULSLAYER

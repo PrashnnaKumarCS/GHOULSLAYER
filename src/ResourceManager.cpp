@@ -23,10 +23,14 @@ void ResourceManager::createFallbackTexture() {
 }
 
 void ResourceManager::createFallbackFont() {
-    // Attempt to load standard Windows monospace system font as fallback
-    if (!m_fallbackFont.loadFromFile("C:/Windows/Fonts/consola.ttf")) {
-        if (!m_fallbackFont.loadFromFile("C:/Windows/Fonts/arial.ttf")) {
-            std::cerr << "[ResourceManager INFO] Default system font fallback initialized (empty).\n";
+    // 1. Prefer bundled open-source pixel font (Press Start 2P)
+    if (!m_fallbackFont.loadFromFile("assets/fonts/PressStart2P-Regular.ttf")) {
+        // 2. Fall back to standard Windows monospace system font
+        if (!m_fallbackFont.loadFromFile("C:/Windows/Fonts/consola.ttf")) {
+            // 3. Fall back to standard Windows Arial
+            if (!m_fallbackFont.loadFromFile("C:/Windows/Fonts/arial.ttf")) {
+                std::cerr << "[ResourceManager INFO] Default system font fallback initialized (empty).\n";
+            }
         }
     }
 }

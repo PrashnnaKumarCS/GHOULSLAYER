@@ -21,8 +21,18 @@ Game::Game()
         Config::Window::TITLE,
         sf::Style::Titlebar | sf::Style::Close
     )
+    , m_uiView(sf::FloatRect(0.0f, 0.0f, static_cast<float>(Config::Window::WIDTH), static_cast<float>(Config::Window::HEIGHT)))
     , m_isWindowFocused(true)
-    , m_state(GameState::Playing)
+    , m_state(GameState::MainMenu)
+    , m_nextState(GameState::MainMenu)
+    , m_isTransitioning(false)
+    , m_fadingOut(false)
+    , m_fadeAlpha(0.0f)
+    , m_mainMenu(m_resources)
+    , m_instructionsScreen(m_resources)
+    , m_settingsScreen(m_resources)
+    , m_pauseMenu(m_resources)
+    , m_gameOverScreen(m_resources)
     , m_score(0)
     , m_kills(0)
 {
@@ -43,74 +53,92 @@ Game::Game()
         sf::Vector2f(static_cast<float>(Config::Window::WIDTH), static_cast<float>(Config::Window::HEIGHT))
     );
 
-    // 3. Screen overlays
-    m_darkOverlay.setSize(sf::Vector2f(
-        static_cast<float>(Config::Window::WIDTH),
-        static_cast<float>(Config::Window::HEIGHT)
-    ));
+    // 3. Screen overlays (atmospheric darkness, vignette, damage flash, fader)
+    float W = static_cast<float>(Config::Window::WIDTH);
+    float H = static_cast<float>(Config::Window::HEIGHT);
+
+    m_darkOverlay.setSize(sf::Vector2f(W, H));
     m_darkOverlay.setFillColor(Config::Darkness::OVERLAY_COLOR);
 
     const sf::Texture& vignetteTex = m_resources.getTexture("vignette");
     m_vignetteSprite.setTexture(vignetteTex);
-    m_vignetteSprite.setScale(
-        static_cast<float>(Config::Window::WIDTH) / 512.0f,
-        static_cast<float>(Config::Window::HEIGHT) / 512.0f
-    );
+    m_vignetteSprite.setScale(W / 512.0f, H / 512.0f);
 
-    m_damageFlashOverlay.setSize(sf::Vector2f(
-        static_cast<float>(Config::Window::WIDTH),
-        static_cast<float>(Config::Window::HEIGHT)
-    ));
+    m_damageFlashOverlay.setSize(sf::Vector2f(W, H));
     m_damageFlashOverlay.setFillColor(Config::Darkness::DAMAGE_FLASH_COLOR);
 
-    // 4. Game Over UI
-    const sf::Font& font = m_resources.getFont("default");
+    m_fadeRect.setSize(sf::Vector2f(W, H));
+    m_fadeRect.setFillColor(sf::Color(0, 0, 0, 0));
 
-    m_gameOverOverlay.setSize(sf::Vector2f(
-        static_cast<float>(Config::Window::WIDTH),
-        static_cast<float>(Config::Window::HEIGHT)
-    ));
-    m_gameOverOverlay.setFillColor(sf::Color(10, 8, 12, 220));
+    // 4. Restore fullscreen setting if saved previously
+    if (m_settingsScreen.isFullscreen()) {
+        setFullscreen(true);
+    }
 
-    m_gameOverBox.setSize(sf::Vector2f(540.0f, 320.0f));
-    m_gameOverBox.setOrigin(270.0f, 160.0f);
-    m_gameOverBox.setPosition(
-        static_cast<float>(Config::Window::WIDTH) * 0.5f,
-        static_cast<float>(Config::Window::HEIGHT) * 0.5f
-    );
-    m_gameOverBox.setFillColor(sf::Color(16, 18, 22, 245));
-    m_gameOverBox.setOutlineColor(sf::Color(180, 40, 40, 220));
-    m_gameOverBox.setOutlineThickness(2.0f);
+    std::cout << "[GHOULSLAYER] Stage 5: Menus, Polished Screens, State Transitions active.\n";
+}
 
-    m_gameOverTitleText.setFont(font);
-    m_gameOverTitleText.setCharacterSize(42);
-    m_gameOverTitleText.setFillColor(sf::Color(230, 45, 45));
-    m_gameOverTitleText.setString("GAME OVER");
-    sf::FloatRect titleB = m_gameOverTitleText.getLocalBounds();
-    m_gameOverTitleText.setOrigin(titleB.width * 0.5f, titleB.height * 0.5f);
-    m_gameOverTitleText.setPosition(static_cast<float>(Config::Window::WIDTH) * 0.5f, 240.0f);
+void Game::setFullscreen(bool fullscreen) {
+    if (fullscreen) {
+        sf::VideoMode desktop = sf::VideoMode::getDesktopMode();
+        m_window.create(desktop, Config::Window::TITLE, sf::Style::Fullscreen);
+    } else {
+        m_window.create(
+            sf::VideoMode(Config::Window::WIDTH, Config::Window::HEIGHT),
+            Config::Window::TITLE,
+            sf::Style::Titlebar | sf::Style::Close
+        );
+    }
 
-    m_gameOverSubtitleText.setFont(font);
-    m_gameOverSubtitleText.setCharacterSize(15);
-    m_gameOverSubtitleText.setFillColor(sf::Color(160, 170, 180));
-    m_gameOverSubtitleText.setString("THE INFECTION CONSUMED YOU.");
-    sf::FloatRect subB = m_gameOverSubtitleText.getLocalBounds();
-    m_gameOverSubtitleText.setOrigin(subB.width * 0.5f, subB.height * 0.5f);
-    m_gameOverSubtitleText.setPosition(static_cast<float>(Config::Window::WIDTH) * 0.5f, 280.0f);
+    m_window.setFramerateLimit(Config::Window::FPS_LIMIT);
+    m_window.setVerticalSyncEnabled(Config::Window::VSYNC_ENABLED);
+    m_window.requestFocus();
 
-    m_gameOverStatsText.setFont(font);
-    m_gameOverStatsText.setCharacterSize(18);
-    m_gameOverStatsText.setFillColor(sf::Color(255, 255, 255));
+    // Maintain consistent 1280x720 virtual resolution across all display modes
+    m_uiView.reset(sf::FloatRect(0.0f, 0.0f, static_cast<float>(Config::Window::WIDTH), static_cast<float>(Config::Window::HEIGHT)));
+}
 
-    m_gameOverPromptText.setFont(font);
-    m_gameOverPromptText.setCharacterSize(16);
-    m_gameOverPromptText.setFillColor(sf::Color(255, 215, 60));
-    m_gameOverPromptText.setString("[ENTER] RESTART RUN    |    [ESC] QUIT");
-    sf::FloatRect promptB = m_gameOverPromptText.getLocalBounds();
-    m_gameOverPromptText.setOrigin(promptB.width * 0.5f, promptB.height * 0.5f);
-    m_gameOverPromptText.setPosition(static_cast<float>(Config::Window::WIDTH) * 0.5f, 470.0f);
+void Game::transitionTo(GameState nextState, bool instant) {
+    if (instant) {
+        m_state = nextState;
+        m_isTransitioning = false;
+        m_fadingOut = false;
+        m_fadeAlpha = 0.0f;
+        if (m_state == GameState::Paused) {
+            m_pauseMenu.resetSelection();
+        }
+        return;
+    }
 
-    std::cout << "[GHOULSLAYER] Stage 4: Wave Manager, Drops, Score, and HUD active.\n";
+    m_nextState = nextState;
+    m_isTransitioning = true;
+    m_fadingOut = true;
+}
+
+void Game::updateTransition(float dt) {
+    if (!m_isTransitioning) return;
+
+    constexpr float FADE_SPEED = 900.0f; // Fast, smooth cinematic fade (~0.28s)
+
+    if (m_fadingOut) {
+        m_fadeAlpha += FADE_SPEED * dt;
+        if (m_fadeAlpha >= 255.0f) {
+            m_fadeAlpha = 255.0f;
+            m_fadingOut = false; // Peak black reached; switch state and fade back in
+
+            m_state = m_nextState;
+
+            if (m_state == GameState::Paused) {
+                m_pauseMenu.resetSelection();
+            }
+        }
+    } else {
+        m_fadeAlpha -= FADE_SPEED * dt;
+        if (m_fadeAlpha <= 0.0f) {
+            m_fadeAlpha = 0.0f;
+            m_isTransitioning = false;
+        }
+    }
 }
 
 void Game::resetGame() {
@@ -128,8 +156,7 @@ void Game::resetGame() {
         sf::Vector2f(static_cast<float>(Config::Window::WIDTH), static_cast<float>(Config::Window::HEIGHT))
     );
 
-    m_state = GameState::Playing;
-    std::cout << "[GHOULSLAYER] Run restarted. Clean state restored.\n";
+    std::cout << "[GHOULSLAYER] Run initialized. Clean game state restored.\n";
 }
 
 void Game::spawnZombie(ZombieType type, float healthMultiplier, float speedMultiplier) {
@@ -220,24 +247,12 @@ void Game::run() {
 }
 
 void Game::handleEvents() {
+    sf::Vector2i mousePixel = sf::Mouse::getPosition(m_window);
+    sf::Vector2f mouseScreenPos = m_window.mapPixelToCoords(mousePixel, m_uiView);
+
     sf::Event event;
     while (m_window.pollEvent(event)) {
         if (event.type == sf::Event::Closed) {
-            m_window.close();
-        }
-
-        if (m_state == GameState::GameOver) {
-            if (event.type == sf::Event::KeyPressed) {
-                if (event.key.code == sf::Keyboard::Return) {
-                    resetGame();
-                } else if (event.key.code == sf::Keyboard::Escape) {
-                    m_window.close();
-                }
-            }
-            continue;
-        }
-
-        if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
             m_window.close();
         }
 
@@ -249,88 +264,221 @@ void Game::handleEvents() {
             m_clock.restart();
         }
 
+        // Delegate discrete events based on active GameState
+        switch (m_state) {
+            case GameState::MainMenu: {
+                MainMenu::Action action = m_mainMenu.handleEvent(event, mouseScreenPos);
+                if (action == MainMenu::Action::Play) {
+                    resetGame();
+                    transitionTo(GameState::Playing);
+                } else if (action == MainMenu::Action::Instructions) {
+                    transitionTo(GameState::Instructions);
+                } else if (action == MainMenu::Action::Settings) {
+                    transitionTo(GameState::Settings);
+                } else if (action == MainMenu::Action::Exit) {
+                    m_window.close();
+                }
+                break;
+            }
+
+            case GameState::Instructions: {
+                if (m_instructionsScreen.handleEvent(event, mouseScreenPos)) {
+                    transitionTo(GameState::MainMenu);
+                }
+                break;
+            }
+
+            case GameState::Settings: {
+                if (m_settingsScreen.handleEvent(event, mouseScreenPos)) {
+                    transitionTo(GameState::MainMenu);
+                }
+                if (m_settingsScreen.consumeFullscreenToggled()) {
+                    setFullscreen(m_settingsScreen.isFullscreen());
+                }
+                break;
+            }
+
+            case GameState::Playing: {
+                // In-game ESC opens Pause Menu instead of closing the game
+                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
+                    transitionTo(GameState::Paused, true);
+                    break;
+                }
+
 #if DEBUG_FEATURES
-        if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F2) {
-            spawnDebugZombieWave(5);
-            std::cout << "[DEBUG] Spawned 5 zombies.\n";
-        }
+                // DEBUG: F3 instantly slays all living zombies and advances to the next wave
+                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F3) {
+                    for (auto& zombie : m_zombies) {
+                        zombie.applyDamage(999999.0f, false);
+                    }
+                    m_zombies.clear();
+                    m_bullets.clear();
+                    m_waveManager.skipToNextWave();
+                    std::cout << "[DEBUG] F3 Triggered: Slayed all zombies, skipped to Wave "
+                              << m_waveManager.getCurrentWave() << "!\n";
+                }
+
+                // DEBUG: F2 spawns 5 zombies
+                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F2) {
+                    spawnDebugZombieWave(5);
+                    std::cout << "[DEBUG] Spawned 5 zombies.\n";
+                }
 #endif
 
-        if (m_isWindowFocused && m_player && m_state == GameState::Playing) {
-            m_player->handleEvent(event);
+                if (m_isWindowFocused && m_player) {
+                    m_player->handleEvent(event);
+                }
+                break;
+            }
+
+            case GameState::Paused: {
+                PauseMenu::Action action = m_pauseMenu.handleEvent(event, mouseScreenPos);
+                if (action == PauseMenu::Action::Resume) {
+                    transitionTo(GameState::Playing, true);
+                } else if (action == PauseMenu::Action::Restart) {
+                    resetGame();
+                    transitionTo(GameState::Playing);
+                } else if (action == PauseMenu::Action::MainMenu) {
+                    transitionTo(GameState::MainMenu);
+                }
+                break;
+            }
+
+            case GameState::GameOver: {
+                GameOverScreen::Action action = m_gameOverScreen.handleEvent(event, mouseScreenPos);
+                if (action == GameOverScreen::Action::Restart) {
+                    resetGame();
+                    transitionTo(GameState::Playing);
+                } else if (action == GameOverScreen::Action::MainMenu) {
+                    transitionTo(GameState::MainMenu);
+                }
+                break;
+            }
         }
     }
 }
 
 void Game::update(float dt) {
+    sf::Vector2i mousePixel = sf::Mouse::getPosition(m_window);
+    sf::Vector2f mouseScreenPos = m_window.mapPixelToCoords(mousePixel, m_uiView);
+    sf::Vector2f mouseWorldPos = m_window.mapPixelToCoords(mousePixel, m_camera.getView());
+
+    updateTransition(dt);
+
     switch (m_state) {
         case GameState::MainMenu:
-            updateMainMenu(dt);
+            updateMainMenu(dt, mouseScreenPos);
+            break;
+        case GameState::Instructions:
+            updateInstructions(dt, mouseScreenPos);
+            break;
+        case GameState::Settings:
+            updateSettings(dt, mouseScreenPos);
             break;
         case GameState::Playing:
-            updatePlaying(dt);
+            updatePlaying(dt, mouseWorldPos);
             break;
         case GameState::Paused:
-            updatePaused(dt);
+            updatePaused(dt, mouseScreenPos);
             break;
         case GameState::GameOver:
-            updateGameOver(dt);
+            updateGameOver(dt, mouseScreenPos);
             break;
     }
 }
 
-void Game::updatePlaying(float dt) {
-    // 1. Check for player demise
+void Game::updateMainMenu(float dt, sf::Vector2f mouseScreenPos) {
+    m_mainMenu.update(dt, mouseScreenPos);
+}
+
+void Game::updateInstructions(float /*dt*/, sf::Vector2f mouseScreenPos) {
+    m_instructionsScreen.update(mouseScreenPos);
+}
+
+void Game::updateSettings(float /*dt*/, sf::Vector2f mouseScreenPos) {
+    m_settingsScreen.update(mouseScreenPos);
+    if (m_settingsScreen.consumeFullscreenToggled()) {
+        setFullscreen(m_settingsScreen.isFullscreen());
+    }
+}
+
+void Game::updatePaused(float /*dt*/, sf::Vector2f mouseScreenPos) {
+    // True freeze: world simulation is skipped entirely!
+    m_pauseMenu.update(mouseScreenPos);
+}
+
+void Game::updateGameOver(float dt, sf::Vector2f mouseScreenPos) {
+    m_gameOverScreen.update(dt, mouseScreenPos);
+}
+
+void Game::updatePlaying(float dt, sf::Vector2f mouseWorldPos) {
+    // Check death condition
     if (m_player->isDead()) {
-        m_state = GameState::GameOver;
+        if (!m_isTransitioning) {
+            m_gameOverScreen.setFinalStats(m_score, m_waveManager.getCurrentWave(), m_kills);
+            transitionTo(GameState::GameOver);
+        }
         return;
     }
 
-    // 2. Mouse position to world coordinates
-    sf::Vector2i mousePixel = sf::Mouse::getPosition(m_window);
-    sf::Vector2f worldMousePos = m_window.mapPixelToCoords(mousePixel, m_camera.getView());
+    const auto& obstacles = m_map->getObstacles();
 
-    // 3. Update player
-    m_player->update(dt, m_map->getObstacles(), worldMousePos);
+    // 1. Player Movement, Aiming, and Firing
+    m_player->update(dt, obstacles, mouseWorldPos);
 
-    // 4. Extract and update active bullets
-    auto newBullets = m_player->extractPendingBullets();
+    // Retrieve pending bullets created by player
+    std::vector<Bullet> newBullets = m_player->extractPendingBullets();
     if (!newBullets.empty()) {
         m_bullets.insert(m_bullets.end(), newBullets.begin(), newBullets.end());
     }
-    for (auto& bullet : m_bullets) {
-        bullet.update(dt, m_map->getObstacles(), m_map->getWidth(), m_map->getHeight());
-    }
 
-    // 5. Update blood splatters
+    // 2. Bullets update against obstacles and map boundaries
+    for (auto& bullet : m_bullets) {
+        bullet.update(dt, obstacles, Config::Map::WIDTH, Config::Map::HEIGHT);
+    }
+    m_bullets.erase(
+        std::remove_if(m_bullets.begin(), m_bullets.end(),
+            [](const Bullet& b) { return !b.isAlive(); }),
+        m_bullets.end()
+    );
+
+    // 3. Blood particle splatters
     m_bloodSystem.update(dt);
 
-    // 6. Update pickups and process player collection
+    // 4. Pickups animation and collection
+    sf::Vector2f playerPos = m_player->getPosition();
+    float playerRadius = m_player->getRadius();
+
     for (auto& pickup : m_pickups) {
         pickup.update(dt);
 
-        if (pickup.checkCollection(m_player->getPosition(), m_player->getRadius())) {
+        if (pickup.checkCollection(playerPos, playerRadius)) {
             if (pickup.getType() == PickupType::HealthKit) {
                 m_player->restoreHealth(Config::Drops::HEALTH_RESTORE);
-                m_hud->showPickupMessage("+25 HEALTH", sf::Color(80, 255, 120));
+                m_hud->showPickupMessage("+" + std::to_string(static_cast<int>(Config::Drops::HEALTH_RESTORE)) + " HEALTH", sf::Color(60, 220, 80));
             } else if (pickup.getType() == PickupType::AmmoBox) {
                 m_player->addAmmo(Config::Drops::AMMO_BOX_ROUNDS);
-                m_hud->showPickupMessage("+AMMO", sf::Color(255, 215, 60));
+                m_hud->showPickupMessage("+" + std::to_string(Config::Drops::AMMO_BOX_ROUNDS) + " AMMO", sf::Color(255, 215, 60));
             } else if (pickup.getType() == PickupType::Coin) {
                 m_score += Config::Drops::COIN_SCORE;
-                m_hud->showPickupMessage("+" + std::to_string(Config::Drops::COIN_SCORE) + " SCORE", sf::Color(255, 230, 80));
+                m_hud->showPickupMessage("+" + std::to_string(Config::Drops::COIN_SCORE) + " SCORE", sf::Color(255, 230, 90));
             }
         }
     }
 
-    // Erase collected or expired pickups
     m_pickups.erase(
         std::remove_if(m_pickups.begin(), m_pickups.end(),
             [](const Pickup& p) { return p.isCollected() || p.isExpired(); }),
         m_pickups.end()
     );
 
-    // 7. Combat Resolution: Bullets vs Live Zombies
+    // 5. Update Zombies (AI, pathfinding, wall collisions)
+    bool playerAlive = !m_player->isDead();
+    for (auto& zombie : m_zombies) {
+        zombie.update(dt, playerPos, playerAlive, obstacles);
+    }
+
+    // 6. Bullet-to-Zombie Collision
     for (auto& bullet : m_bullets) {
         if (!bullet.isAlive()) continue;
 
@@ -338,23 +486,23 @@ void Game::updatePlaying(float dt) {
             if (zombie.isDead()) continue;
 
             if (CollisionSystem::checkPointCircle(bullet.getPosition(), zombie.getPosition(), zombie.getRadius())) {
-                bool wasDead = zombie.isDead();
-                zombie.applyDamage(bullet.getDamage(), bullet.isShotgunPellet());
                 bullet.kill();
-                m_bloodSystem.spawnSplatter(bullet.getPosition(), bullet.getDirection());
 
-                // Trigger kill awards once upon death
-                if (!wasDead && zombie.isDead()) {
+                bool isShotgun = bullet.isShotgunPellet();
+                bool wasAlive = !zombie.isDead();
+                zombie.applyDamage(bullet.getDamage(), isShotgun);
+
+                sf::Vector2f hitDir = bullet.getDirection();
+                m_bloodSystem.spawnSplatter(bullet.getPosition(), hitDir);
+
+                if (wasAlive && zombie.isDead()) {
                     m_kills++;
-                    if (zombie.getType() == ZombieType::Walker) {
-                        m_score += Config::Score::WALKER_KILL;
-                    } else if (zombie.getType() == ZombieType::Runner) {
-                        m_score += Config::Score::RUNNER_KILL;
-                    } else if (zombie.getType() == ZombieType::Tank) {
-                        m_score += Config::Score::TANK_KILL;
-                    }
+                    int killScore = 0;
+                    if (zombie.getType() == ZombieType::Walker) killScore = Config::Score::WALKER_KILL;
+                    else if (zombie.getType() == ZombieType::Runner) killScore = Config::Score::RUNNER_KILL;
+                    else if (zombie.getType() == ZombieType::Tank) killScore = Config::Score::TANK_KILL;
 
-                    // Roll for item drop
+                    m_score += killScore;
                     handleZombieDrop(zombie.getType(), zombie.getPosition());
                 }
                 break;
@@ -362,24 +510,15 @@ void Game::updatePlaying(float dt) {
         }
     }
 
-    // Safe bullet removal
-    m_bullets.erase(
-        std::remove_if(m_bullets.begin(), m_bullets.end(),
-            [](const Bullet& b) { return !b.isAlive(); }),
-        m_bullets.end()
-    );
+    // 7. Zombie-to-Player Attack & Damage
+    if (playerAlive) {
+        for (auto& zombie : m_zombies) {
+            if (zombie.isDead()) continue;
 
-    // 8. Update zombies and check attacks on player
-    bool playerAlive = !m_player->isDead();
-    sf::Vector2f playerPos = m_player->getPosition();
-    float playerRadius = m_player->getRadius();
-
-    for (auto& zombie : m_zombies) {
-        zombie.update(dt, playerPos, playerAlive, m_map->getObstacles());
-
-        if (playerAlive && zombie.canAttack(playerPos, playerRadius)) {
-            float damage = zombie.performAttack();
-            m_player->takeDamage(damage);
+            if (zombie.canAttack(playerPos, playerRadius)) {
+                float damage = zombie.performAttack();
+                m_player->takeDamage(damage);
+            }
         }
     }
 
@@ -458,16 +597,18 @@ void Game::updatePlaying(float dt) {
     m_hud->update(dt);
 }
 
-void Game::updateMainMenu(float /*dt*/) {}
-void Game::updatePaused(float /*dt*/) {}
-void Game::updateGameOver(float /*dt*/) {}
-
 void Game::render() {
     m_window.clear(sf::Color(14, 14, 18));
 
     switch (m_state) {
         case GameState::MainMenu:
             renderMainMenu();
+            break;
+        case GameState::Instructions:
+            renderInstructions();
+            break;
+        case GameState::Settings:
+            renderSettings();
             break;
         case GameState::Playing:
             renderPlaying();
@@ -480,7 +621,31 @@ void Game::render() {
             break;
     }
 
+    // State transition fade-to-black overlay
+    if (m_fadeAlpha > 0.0f) {
+        m_window.setView(m_uiView);
+        m_fadeRect.setFillColor(sf::Color(0, 0, 0, static_cast<sf::Uint8>(std::clamp(m_fadeAlpha, 0.0f, 255.0f))));
+        m_window.draw(m_fadeRect);
+    }
+
     m_window.display();
+}
+
+void Game::renderMainMenu() {
+    m_window.setView(m_uiView);
+    m_mainMenu.draw(m_window);
+}
+
+void Game::renderInstructions() {
+    m_window.setView(m_uiView);
+    m_mainMenu.draw(m_window); // Menu backdrop behind overlay
+    m_instructionsScreen.draw(m_window);
+}
+
+void Game::renderSettings() {
+    m_window.setView(m_uiView);
+    m_mainMenu.draw(m_window); // Menu backdrop behind overlay
+    m_settingsScreen.draw(m_window);
 }
 
 void Game::renderPlaying() {
@@ -520,8 +685,8 @@ void Game::renderPlaying() {
     // Render Player
     m_player->draw(m_window);
 
-    // 2. Screen space rendering (default view)
-    m_window.setView(m_window.getDefaultView());
+    // 2. Screen space rendering (UI view)
+    m_window.setView(m_uiView);
 
     // Dark atmosphere & vignette
     m_window.draw(m_darkOverlay);
@@ -536,38 +701,24 @@ void Game::renderPlaying() {
         m_window.draw(m_damageFlashOverlay);
     }
 
-    // Full HUD
+    // Full In-game HUD
     m_hud->render(m_window, *m_player, m_waveManager, m_score, m_kills);
 }
 
-void Game::renderGameOver() {
-    // 1. Render the frozen world in the background
-    m_window.setView(m_camera.getView());
-    m_map->draw(m_window, m_camera.getView());
-    for (const auto& p : m_pickups) p.draw(m_window);
-    m_bloodSystem.draw(m_window);
-    for (const auto& z : m_zombies) z.draw(m_window);
-    m_player->draw(m_window);
+void Game::renderPaused() {
+    // Frozen game world in background
+    renderPlaying();
 
-    // 2. Screen space Game Over Screen
-    m_window.setView(m_window.getDefaultView());
-    m_window.draw(m_gameOverOverlay);
-    m_window.draw(m_gameOverBox);
-    m_window.draw(m_gameOverTitleText);
-    m_window.draw(m_gameOverSubtitleText);
-
-    std::string statsStr = "FINAL SCORE:    " + std::to_string(m_score) + "\n\n";
-    statsStr += "WAVES REACHED:  " + std::to_string(m_waveManager.getCurrentWave()) + "\n\n";
-    statsStr += "TOTAL KILLS:    " + std::to_string(m_kills);
-
-    m_gameOverStatsText.setString(statsStr);
-    sf::FloatRect statsB = m_gameOverStatsText.getLocalBounds();
-    m_gameOverStatsText.setOrigin(statsB.width * 0.5f, statsB.height * 0.5f);
-    m_gameOverStatsText.setPosition(static_cast<float>(Config::Window::WIDTH) * 0.5f, 360.0f);
-    m_window.draw(m_gameOverStatsText);
-
-    m_window.draw(m_gameOverPromptText);
+    // Semi-transparent pause menu on top
+    m_window.setView(m_uiView);
+    m_pauseMenu.draw(m_window);
 }
 
-void Game::renderMainMenu() {}
-void Game::renderPaused() {}
+void Game::renderGameOver() {
+    // Frozen game world in background
+    renderPlaying();
+
+    // Polished game over screen on top
+    m_window.setView(m_uiView);
+    m_gameOverScreen.draw(m_window);
+}

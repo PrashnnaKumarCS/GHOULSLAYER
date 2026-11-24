@@ -52,6 +52,9 @@ public:
     int getTotalZombiesForWave() const { return m_totalZombiesForWave; }
     int getZombiesRemainingToSpawn() const { return m_totalZombiesForWave - m_zombiesSpawned; }
 
+    // DEBUG: Skip immediately to the next wave
+    void skipToNextWave();
+
     // Banner message queries
     const std::string& getBannerTitle() const { return m_bannerTitle; }
     const std::string& getBannerSubtitle() const { return m_bannerSubtitle; }

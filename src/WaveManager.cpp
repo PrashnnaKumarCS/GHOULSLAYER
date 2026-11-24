@@ -40,6 +40,12 @@ void WaveManager::reset() {
     initWave(1);
 }
 
+void WaveManager::skipToNextWave() {
+    // DEBUG helper: force wave completion and advance immediately to next wave
+    m_zombiesSpawned = m_totalZombiesForWave;
+    initWave(m_currentWave + 1);
+}
+
 void WaveManager::initWave(int waveNumber) {
     m_currentWave = waveNumber;
 

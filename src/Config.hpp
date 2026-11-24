@@ -2,6 +2,10 @@
 #include <string>
 #include <SFML/Graphics/Color.hpp>
 
+#ifndef DEBUG_FEATURES
+#define DEBUG_FEATURES 1
+#endif
+
 // Central configuration file for GHOULSLAYER.
 // All tunable numbers, gameplay speeds, dimensions, weapon stats,
 // zombie stats, wave progression, drop chances, and engine settings
