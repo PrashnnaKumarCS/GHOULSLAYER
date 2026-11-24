@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(GHOULSLAYER
-    VERSION 0.3.0
+    VERSION 0.4.0
     LANGUAGES CXX
 )
 
@@ -42,6 +42,9 @@ set(SOURCES
     src/Zombie.cpp
     src/CollisionSystem.cpp
     src/BloodSystem.cpp
+    src/Pickup.cpp
+    src/WaveManager.cpp
+    src/HUD.cpp
 )
 
 set(HEADERS
@@ -57,6 +60,9 @@ set(HEADERS
     include/Zombie.hpp
     include/CollisionSystem.hpp
     include/BloodSystem.hpp
+    include/Pickup.hpp
+    include/WaveManager.hpp
+    include/HUD.hpp
 )
 
 add_executable(GHOULSLAYER

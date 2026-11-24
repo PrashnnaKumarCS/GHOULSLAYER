@@ -4,7 +4,8 @@
 
 // Central configuration file for GHOULSLAYER.
 // All tunable numbers, gameplay speeds, dimensions, weapon stats,
-// zombie stats, and engine settings are kept here in one place.
+// zombie stats, wave progression, drop chances, and engine settings
+// are kept here in one place for easy balancing.
 namespace Config {
 
     namespace Window {
@@ -150,6 +151,59 @@ namespace Config {
         constexpr float SEPARATION_FORCE = 70.0f;       // Soft push-apart speed between colliding zombies
         constexpr float HIT_FLASH_DURATION = 0.08f;     // Red/white damage flash duration
         constexpr float DEATH_FADE_DURATION = 0.50f;    // Fade out duration before removal
+    }
+
+    namespace Waves {
+        constexpr int BASE_ZOMBIES = 5;
+        constexpr int ZOMBIES_PER_WAVE = 3;
+        constexpr int MAX_ZOMBIES_PER_WAVE = 80;
+        constexpr float BATCH_SPAWN_INTERVAL = 1.8f;   // seconds between spawn batches
+        constexpr int BATCH_SIZE = 3;                  // zombies spawned per batch
+        constexpr float INTERMISSION_DURATION = 5.0f;  // seconds between wave clear and next wave
+
+        // Horde wave every 5 waves
+        constexpr int HORDE_WAVE_INTERVAL = 5;
+        constexpr float HORDE_MULTIPLIER = 1.5f;
+
+        // Difficulty scaling per wave
+        constexpr float SPEED_SCALE_PER_WAVE = 0.025f; // +2.5% speed per wave
+        constexpr float MAX_SPEED_MULTIPLIER = 1.35f;  // capped so runners never become unfairly fast
+        constexpr float HEALTH_SCALE_PER_WAVE = 0.07f; // +7% health per wave
+
+        // Weapon progression unlocks
+        constexpr int SHOTGUN_UNLOCK_WAVE = 3;
+        constexpr int SHOTGUN_STARTER_AMMO = 18;
+        constexpr int RIFLE_UNLOCK_WAVE = 6;
+        constexpr int RIFLE_STARTER_AMMO = 60;
+    }
+
+    namespace Drops {
+        // Drop chances from regular zombies (Walker, Runner)
+        constexpr float HEALTH_CHANCE = 0.12f;         // 12%
+        constexpr float AMMO_CHANCE = 0.18f;           // 18%
+        constexpr float COIN_CHANCE = 0.25f;           // 25%
+
+        // Tanks drop valuable supplies much more frequently
+        constexpr float TANK_HEALTH_CHANCE = 0.40f;    // 40%
+        constexpr float TANK_AMMO_CHANCE = 0.35f;      // 35%
+        constexpr float TANK_COIN_CHANCE = 0.25f;      // 25%
+
+        // Values
+        constexpr float HEALTH_RESTORE = 25.0f;
+        constexpr int AMMO_BOX_ROUNDS = 24;            // Reserve ammo added
+        constexpr int COIN_SCORE = 50;
+
+        // Despawn timing
+        constexpr float LIFETIME = 15.0f;              // Total lifetime in seconds
+        constexpr float BLINK_THRESHOLD = 3.0f;        // Blinks rapidly in the last 3 seconds
+        constexpr float PICKUP_RADIUS = 22.0f;         // Distance to collect
+    }
+
+    namespace Score {
+        constexpr int WALKER_KILL = 10;
+        constexpr int RUNNER_KILL = 20;
+        constexpr int TANK_KILL = 100;
+        constexpr int WAVE_CLEAR_BASE = 100;           // Multiplied by wave number
     }
 
     namespace Blood {

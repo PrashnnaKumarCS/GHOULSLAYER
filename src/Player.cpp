@@ -75,6 +75,27 @@ void Player::takeDamage(float damage) {
     }
 }
 
+void Player::restoreHealth(float amount) {
+    if (m_isDead) return;
+    m_health = std::min(Config::Player::MAX_HEALTH, m_health + amount);
+}
+
+void Player::addAmmo(int amount) {
+    m_weapons[m_currentWeaponIndex].addReserve(amount);
+}
+
+void Player::unlockWeaponType(WeaponType type, int starterAmmo) {
+    for (auto& w : m_weapons) {
+        if (w.getType() == type) {
+            w.unlock();
+            if (starterAmmo > 0) {
+                w.addReserve(starterAmmo);
+            }
+            break;
+        }
+    }
+}
+
 void Player::handleEvent(const sf::Event& event) {
     if (m_isDead) return; // Prevent actions when dead
 

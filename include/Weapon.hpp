@@ -63,6 +63,7 @@ public:
     int getMagazine() const { return m_currentMag; }
     int getMaxMagazine() const { return m_stats.magazineCapacity; }
     int getReserve() const { return m_currentReserve; }
+    void addReserve(int amount) { m_currentReserve += amount; }
     bool isReloading() const { return m_isReloading; }
     bool isAutomatic() const { return m_stats.isAutomatic; }
     bool isUnlocked() const { return m_isUnlocked; }

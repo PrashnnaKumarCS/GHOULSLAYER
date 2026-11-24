@@ -5,7 +5,7 @@
 #include <cmath>
 #include <algorithm>
 
-Zombie::Zombie(ZombieType type, sf::Vector2f spawnPosition, const ResourceManager& resources)
+Zombie::Zombie(ZombieType type, sf::Vector2f spawnPosition, const ResourceManager& resources, float healthMultiplier, float speedMultiplier)
     : m_type(type)
     , m_position(spawnPosition)
     , m_moveDirection(1.0f, 0.0f)
@@ -26,8 +26,8 @@ Zombie::Zombie(ZombieType type, sf::Vector2f spawnPosition, const ResourceManage
 
     switch (m_type) {
         case ZombieType::Walker:
-            m_speed = Config::Zombies::Walker::SPEED;
-            m_health = m_maxHealth = Config::Zombies::Walker::MAX_HEALTH;
+            m_speed = Config::Zombies::Walker::SPEED * speedMultiplier;
+            m_health = m_maxHealth = Config::Zombies::Walker::MAX_HEALTH * healthMultiplier;
             m_damage = Config::Zombies::Walker::DAMAGE;
             m_radius = Config::Zombies::Walker::RADIUS;
             m_attackRange = Config::Zombies::Walker::ATTACK_RANGE;
@@ -38,8 +38,8 @@ Zombie::Zombie(ZombieType type, sf::Vector2f spawnPosition, const ResourceManage
             break;
 
         case ZombieType::Runner:
-            m_speed = Config::Zombies::Runner::SPEED;
-            m_health = m_maxHealth = Config::Zombies::Runner::MAX_HEALTH;
+            m_speed = Config::Zombies::Runner::SPEED * speedMultiplier;
+            m_health = m_maxHealth = Config::Zombies::Runner::MAX_HEALTH * healthMultiplier;
             m_damage = Config::Zombies::Runner::DAMAGE;
             m_radius = Config::Zombies::Runner::RADIUS;
             m_attackRange = Config::Zombies::Runner::ATTACK_RANGE;
@@ -50,8 +50,8 @@ Zombie::Zombie(ZombieType type, sf::Vector2f spawnPosition, const ResourceManage
             break;
 
         case ZombieType::Tank:
-            m_speed = Config::Zombies::Tank::SPEED;
-            m_health = m_maxHealth = Config::Zombies::Tank::MAX_HEALTH;
+            m_speed = Config::Zombies::Tank::SPEED * speedMultiplier;
+            m_health = m_maxHealth = Config::Zombies::Tank::MAX_HEALTH * healthMultiplier;
             m_damage = Config::Zombies::Tank::DAMAGE;
             m_radius = Config::Zombies::Tank::RADIUS;
             m_attackRange = Config::Zombies::Tank::ATTACK_RANGE;

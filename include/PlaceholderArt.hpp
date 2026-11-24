@@ -14,6 +14,7 @@ public:
 private:
     static void generatePlayerWalkFrames(ResourceManager& resources);
     static void generateZombieWalkFrames(ResourceManager& resources);
+    static void generatePickupTextures(ResourceManager& resources);
     static void generateTiles(ResourceManager& resources);
     static void generateObstacles(ResourceManager& resources);
     static void generateVignette(ResourceManager& resources);

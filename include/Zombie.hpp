@@ -21,7 +21,7 @@ enum class ZombieType {
 // - Smooth death fade-out animation before removal
 class Zombie {
 public:
-    Zombie(ZombieType type, sf::Vector2f spawnPosition, const ResourceManager& resources);
+    Zombie(ZombieType type, sf::Vector2f spawnPosition, const ResourceManager& resources, float healthMultiplier = 1.0f, float speedMultiplier = 1.0f);
 
     // Update AI behavior, pathing, collision resolution, and animation
     void update(float dt, sf::Vector2f playerPos, bool playerIsAlive, const std::vector<sf::FloatRect>& obstacles);

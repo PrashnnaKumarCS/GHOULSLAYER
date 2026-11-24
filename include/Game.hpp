@@ -10,8 +10,11 @@
 #include "Bullet.hpp"
 #include "Zombie.hpp"
 #include "BloodSystem.hpp"
+#include "Pickup.hpp"
+#include "WaveManager.hpp"
+#include "HUD.hpp"
 
-// Game states for state machine
+// Primary game states
 enum class GameState {
     MainMenu,
     Playing,
@@ -37,6 +40,18 @@ private:
     void update(float dt);
     void render();
 
+    // Reset all game systems to start a fresh playthrough
+    void resetGame();
+
+    // Spawns a single zombie outside screen bounds safely
+    void spawnZombie(ZombieType type, float healthMultiplier, float speedMultiplier);
+
+    // Spawns random debug wave
+    void spawnDebugZombieWave(int count);
+
+    // Drops calculation when a zombie is slain
+    void handleZombieDrop(ZombieType type, sf::Vector2f position);
+
     // State machine updates
     void updateMainMenu(float dt);
     void updatePlaying(float dt);
@@ -48,9 +63,6 @@ private:
     void renderPlaying();
     void renderPaused();
     void renderGameOver();
-
-    // Spawns zombies in a ring outside the screen around the player
-    void spawnZombieWave(int count);
 
     // Window and Timing
     sf::RenderWindow m_window;
@@ -69,15 +81,27 @@ private:
     // Entities
     std::vector<Bullet> m_bullets;
     std::vector<Zombie> m_zombies;
+    std::vector<Pickup> m_pickups;
     BloodSystem m_bloodSystem;
+
+    // Progression & UI
+    WaveManager m_waveManager;
+    std::unique_ptr<HUD> m_hud;
+
+    // Stats
+    int m_score;
+    int m_kills;
 
     // Screen-space atmospheric & damage effects
     sf::RectangleShape m_darkOverlay;
     sf::Sprite m_vignetteSprite;
     sf::RectangleShape m_damageFlashOverlay;
 
-    // Temporary debug HUD for Stage 3
-    sf::RectangleShape m_debugBox;
-    sf::Text m_debugText;
-    sf::Text m_hintText;
+    // Game Over UI elements
+    sf::RectangleShape m_gameOverOverlay;
+    sf::RectangleShape m_gameOverBox;
+    sf::Text m_gameOverTitleText;
+    sf::Text m_gameOverSubtitleText;
+    sf::Text m_gameOverStatsText;
+    sf::Text m_gameOverPromptText;
 };

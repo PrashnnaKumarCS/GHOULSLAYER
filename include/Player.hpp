@@ -38,6 +38,13 @@ public:
     // Inflict damage upon the player, enforcing invulnerability frames
     void takeDamage(float damage);
 
+    // Health and ammo restoration from pickups
+    void restoreHealth(float amount);
+    void addAmmo(int amount);
+
+    // Progression: unlock specific weapon and grant starter ammo
+    void unlockWeaponType(WeaponType type, int starterAmmo);
+
     // Getters
     sf::Vector2f getPosition() const { return m_position; }
     float getHealth() const { return m_health; }

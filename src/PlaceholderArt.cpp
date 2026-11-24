@@ -7,9 +7,102 @@
 void PlaceholderArt::generateAll(ResourceManager& resources) {
     generatePlayerWalkFrames(resources);
     generateZombieWalkFrames(resources);
+    generatePickupTextures(resources);
     generateTiles(resources);
     generateObstacles(resources);
     generateVignette(resources);
+}
+
+void PlaceholderArt::generatePickupTextures(ResourceManager& resources) {
+    // 1. HEALTH KIT (16x16 white field case with bright red cross)
+    sf::Image healthImg;
+    healthImg.create(16, 16, sf::Color(0, 0, 0, 0));
+    sf::Color whiteCase(240, 240, 245);
+    sf::Color redCross(220, 25, 25);
+    sf::Color caseBorder(60, 60, 65);
+
+    // Box body & outline
+    for (int y = 2; y <= 13; ++y) {
+        for (int x = 2; x <= 13; ++x) {
+            bool isBorder = (x == 2 || x == 13 || y == 2 || y == 13);
+            healthImg.setPixel(x, y, isBorder ? caseBorder : whiteCase);
+        }
+    }
+    // Red Cross
+    for (int y = 4; y <= 11; ++y) {
+        healthImg.setPixel(7, y, redCross);
+        healthImg.setPixel(8, y, redCross);
+    }
+    for (int x = 4; x <= 11; ++x) {
+        healthImg.setPixel(x, 7, redCross);
+        healthImg.setPixel(x, 8, redCross);
+    }
+    sf::Texture healthTex;
+    healthTex.loadFromImage(healthImg);
+    healthTex.setSmooth(false);
+    resources.insertTexture("pickup_health", healthTex);
+
+    // 2. AMMO BOX (16x16 olive drab metal military tin with gold bullets)
+    sf::Image ammoImg;
+    ammoImg.create(16, 16, sf::Color(0, 0, 0, 0));
+    sf::Color oliveTin(60, 75, 45);
+    sf::Color tinBorder(35, 45, 28);
+    sf::Color goldBullet(235, 195, 40);
+
+    for (int y = 3; y <= 12; ++y) {
+        for (int x = 2; x <= 13; ++x) {
+            bool isBorder = (x == 2 || x == 13 || y == 3 || y == 12);
+            ammoImg.setPixel(x, y, isBorder ? tinBorder : oliveTin);
+        }
+    }
+    // Latch
+    ammoImg.setPixel(7, 3, sf::Color(180, 180, 190));
+    ammoImg.setPixel(8, 3, sf::Color(180, 180, 190));
+    // Gold Bullet Stencil
+    for (int y = 6; y <= 9; ++y) {
+        ammoImg.setPixel(5, y, goldBullet);
+        ammoImg.setPixel(7, y, goldBullet);
+        ammoImg.setPixel(9, y, goldBullet);
+    }
+    ammoImg.setPixel(5, 5, goldBullet);
+    ammoImg.setPixel(7, 5, goldBullet);
+    ammoImg.setPixel(9, 5, goldBullet);
+
+    sf::Texture ammoTex;
+    ammoTex.loadFromImage(ammoImg);
+    ammoTex.setSmooth(false);
+    resources.insertTexture("pickup_ammo", ammoTex);
+
+    // 3. COIN (16x16 shiny gold survival medallion)
+    sf::Image coinImg;
+    coinImg.create(16, 16, sf::Color(0, 0, 0, 0));
+    sf::Color goldRim(180, 140, 20);
+    sf::Color goldCenter(255, 215, 35);
+    sf::Color goldHighlight(255, 250, 160);
+
+    for (int y = 2; y <= 13; ++y) {
+        for (int x = 2; x <= 13; ++x) {
+            float dx = x - 7.5f;
+            float dy = y - 7.5f;
+            float dist = std::sqrt(dx * dx + dy * dy);
+            if (dist <= 6.0f) {
+                if (dist > 4.5f) {
+                    coinImg.setPixel(x, y, goldRim);
+                } else {
+                    coinImg.setPixel(x, y, goldCenter);
+                }
+            }
+        }
+    }
+    // High shine speckle
+    coinImg.setPixel(5, 5, goldHighlight);
+    coinImg.setPixel(6, 5, goldHighlight);
+    coinImg.setPixel(5, 6, goldHighlight);
+
+    sf::Texture coinTex;
+    coinTex.loadFromImage(coinImg);
+    coinTex.setSmooth(false);
+    resources.insertTexture("pickup_coin", coinTex);
 }
 
 void PlaceholderArt::generateZombieWalkFrames(ResourceManager& resources) {
